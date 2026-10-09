@@ -7,9 +7,11 @@ const API = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replac
 function App() {
   const [page, setPage] = useState(window.location.pathname === "/verify" ? "verify" : "register");
   const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [otp, setOtp] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [verified, setVerified] = useState(false);
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem("authToken") || "");
 
@@ -37,7 +39,10 @@ function App() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "Request failed.");
       if (page === "register") {
-        setMessage(`${data.message} For local testing, open the Mailpit inbox below.`);
+        setMessage(`${data.message} Open Mailpit to view the code.`);
+        setPage("verify");
+        setVerified(false);
+        window.history.pushState({}, "", "/verify");
       } else {
         localStorage.setItem("authToken", data.token);
         setToken(data.token); setUser(data.user); setMessage(data.message);
@@ -47,16 +52,17 @@ function App() {
   }
 
   async function verify() {
-    const params = new URLSearchParams(window.location.search);
-    const verificationToken = params.get("token");
-    if (!verificationToken) { setError("The verification token is missing from this link."); return; }
     setBusy(true); setError(""); setMessage("");
     try {
-      const response = await fetch(`${API}/auth/verify?token=${encodeURIComponent(verificationToken)}`);
+      const response = await fetch(`${API}/auth/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: form.email, otp })
+      });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "Verification failed.");
       setMessage(data.message);
-      window.history.replaceState({}, "", "/verify");
+      setVerified(true);
     } catch (e) { setError(e.message); }
     finally { setBusy(false); }
   }
@@ -76,10 +82,14 @@ function App() {
 
   if (page === "verify") return <main className="shell"><section className="card">
     <div className="brand-mark">✉</div><h1>Verify your email</h1>
-    <p className="subtitle">Confirm your email address to finish registration.</p>
+    <p className="subtitle">Enter the 6-digit OTP sent to your email address.</p>
     {message && <div className="notice success">{message}</div>}
     {error && <div className="notice error">{error}</div>}
-    {!message && <button disabled={busy} onClick={verify}>{busy ? "Verifying..." : "Verify email address"}</button>}
+    {!verified && <form onSubmit={event => { event.preventDefault(); verify(); }}>
+      <label>Email address<input type="email" required maxLength="254" value={form.email} onChange={e => setForm({...form, email:e.target.value})} placeholder="you@example.com" /></label>
+      <label>Verification OTP<input inputMode="numeric" pattern="[0-9]{6}" required maxLength="6" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="6-digit code" /></label>
+      <button type="submit" disabled={busy}>{busy ? "Verifying..." : "Verify email address"}</button>
+    </form>}
     <p className="switch">Already verified? <a href="/" onClick={e => { e.preventDefault(); setPage("login"); window.history.pushState({}, "", "/"); setMessage(""); setError(""); }}>Log in</a></p>
   </section></main>;
 
@@ -100,7 +110,7 @@ function App() {
       {error && <div className="notice error">{error}</div>}
       <button type="submit" disabled={busy}>{busy ? "Please wait..." : page === "register" ? "Create account" : "Log in"}</button>
     </form>
-    {page === "register" && <p className="fineprint">A verification link will be sent to your email. The link expires after 15 minutes.</p>}
+    {page === "register" && <p className="fineprint">A 6-digit verification OTP will be sent to your email. It expires after 15 minutes.</p>}
     <p className="mailpit">Development email inbox: <a href="http://localhost:8025" target="_blank" rel="noreferrer">Open Mailpit ↗</a></p>
   </section><p className="footer">React · Express · PostgreSQL · Redis · Docker</p></main>;
 }

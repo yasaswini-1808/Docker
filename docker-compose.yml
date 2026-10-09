@@ -3,7 +3,7 @@ services:
     build:
       context: ./frontend
       args:
-        VITE_API_URL: http://localhost:5000/api
+        VITE_API_URL: http://localhost:5002/api
     ports:
       - "3000:80"
     depends_on:
@@ -22,7 +22,7 @@ services:
       JWT_SECRET: change-this-development-secret-before-production
       NODE_ENV: development
     ports:
-      - "5000:5000"
+      - "5002:5000"
     depends_on:
       postgres:
         condition: service_healthy

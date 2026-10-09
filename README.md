@@ -15,7 +15,7 @@ docker compose up --build
 
 Open:
 - Frontend: http://localhost:3000
-- API health check: http://localhost:5000/api/health
+- API health check: http://localhost:5002/api/health
 
 ## Mailpit
 
@@ -26,7 +26,7 @@ Mailpit is included as a local development SMTP server and email inbox. It captu
 - SMTP port: `1025`
 - No captured email is delivered externally.
 
-To test email verification, register with any email address, open the Mailpit inbox, open the verification message, and click its verification link. Then log in to the application.
+To test email verification, register with any email address, open the Mailpit inbox, copy the 6-digit OTP from the verification email, enter it in the frontend, and then log in to the application.
 
 ## Stop
 ```bash
@@ -40,11 +40,11 @@ docker compose down -v
 
 ## Workflow
 1. Registration validates input and checks PostgreSQL for an existing verified account.
-2. Password is hashed with bcrypt before being stored in Redis.
-3. Pending registration and a random, single-use verification token are stored in Redis with a 15-minute TTL.
-4. The backend sends a verification email through Mailpit's SMTP service.
-5. The verification endpoint checks the token in Redis and inserts the user into PostgreSQL.
-6. The token and pending Redis keys are deleted after successful verification.
+2. Password is hashed with bcrypt before being stored in the pending registration record in Redis.
+3. Pending registration details and a hashed, six-digit, single-use OTP are stored in Redis with a 15-minute TTL.
+4. The backend sends the OTP through Mailpit's SMTP service.
+5. The verification endpoint validates the submitted OTP against Redis and inserts the user into PostgreSQL.
+6. The OTP, pending registration, and attempt keys are deleted after successful verification.
 7. Login compares the submitted password with the stored hash and only issues a JWT for a verified database user.
 
 ## Important production notes
